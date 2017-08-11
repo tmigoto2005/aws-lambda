@@ -1,10 +1,10 @@
 import boto3
 
-# Enter the region your instances are in, e.g. 'us-east-1'
+# Enter the region where your instances are, e.g. 'us-east-1'
 region = 'us-east-1'
 
 # Enter your instances here: ex. ['X-XXXXXXXX', 'X-XXXXXXXX']
-instances = ['i-075be11ed18c69d1e', 'i-0968c9fa1430d770a', 'i-04f56a836b9cc32c3']
+instances = ['i-xxxxxxxxxx', 'i-yyyyyyyyyyy', 'i-zzzzzzzzz']
 
 def lambda_handler(event, context):
 
