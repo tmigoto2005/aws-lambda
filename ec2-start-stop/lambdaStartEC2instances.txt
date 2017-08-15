@@ -3,11 +3,11 @@ import boto3
 # Enter the region where your instances are, e.g. 'us-east-1'
 region = 'us-east-1'
 
-# Enter your instances ID here: ex. ['X-XXXXXXXX', 'X-XXXXXXXX']
+# Enter your instances ID here: e.g. ['X-XXXXXXXX', 'X-XXXXXXXX']
 instances = ['i-xxxxxxxx', 'i-yyyyyyyyyy','i-zzzzzzzzz']
 
 def lambda_handler(event, context):
 
     ec2 = boto3.client('ec2', region_name=region)
     ec2.start_instances(InstanceIds=instances)
-    print 'Started instances: ' + str(instances)
+    	print 'Started instances: ' + str(instances)
