@@ -1,0 +1,77 @@
+var aws = require('aws-sdk');
+aws.config.region = 'us-east-1';
+var ec2 = new aws.EC2();
+
+exports.handler = (event, context, callback) => {
+
+    var d = new Date();
+    time = d.getTime();
+    var purge;
+    var snapshots = [];
+
+    ec2.describeImages({
+        Owners: ['self'],
+        },
+
+    function(err, data) {
+        if (err) {
+            console.log(err, err.stack);
+        } else {
+            for (var j in data.Images) {
+                imagename = data.Images[j].Name;
+                imageid = data.Images[j].ImageId;
+                console.log("Starting process on: " + imageid);
+
+                purge = 0;
+                for (var tag in data.Images[j].Tags)
+                {
+                    if (data.Images[j].Tags[tag].Key == 'Backup') {
+                        if (!isNaN(data.Images[j].Tags[tag].Value ) && data.Images[j].Tags[tag].Value !== "") {
+                            purge = time - (data.Images[j].Tags[tag].Value * 24 * 60 * 60 * 1000);
+                        }
+                        else {
+                            purge = time - (7 * 24 * 60 * 60 * 1000);
+                        }
+                    }
+                }
+                for (tag in data.Images[j].Tags) {
+                    if (data.Images[j].Tags[tag].Key == 'CreationDate') {
+                        valueCreationDate = data.Images[j].Tags[tag].Value;
+                            if (valueCreationDate < purge) {
+                            var deregisterparams = {
+                                ImageId: imageid
+                            };
+                            ec2.deregisterImage(deregisterparams, function(err, data01) {
+                                if (err) {
+                                    // an error occurred
+                                    console.log(err, err.stack);
+                                }
+                            });
+                            for (var k in data.Images[j].BlockDeviceMappings) {
+                                for (var l in data.Images[j].BlockDeviceMappings[k].Ebs)
+                                snap = data.Images[j].BlockDeviceMappings[k].Ebs.SnapshotId;
+                                snapshots.push(snap);
+                            }
+                        console.log("Image Deregistered " + imageid);
+                        }
+                    }
+                }
+            }
+
+        setTimeout(function(err, data) {
+                    for( var j in snapshots) {
+                        snap = snapshots[j];
+                        console.log(snap);
+                        var snapparams = {
+                            SnapshotId: snap
+                        }
+                        ec2.deleteSnapshot(snapparams, function(err, data) {
+                            if (err) console.log(err, err.stack); // an error occurred
+                            else console.log("Snapshot Deleted " +snap); // successful response
+                        });
+                    }
+            }, 1000);
+    }
+	callback(null, "Delete Process Finished.");
+    });
+}

@@ -1,0 +1,75 @@
+var aws = require('aws-sdk');
+aws.config.region = 'us-east-1';
+var ec2 = new aws.EC2();
+
+exports.handler = (event, context, callback) => {
+
+    var now = new Date();
+    date = now.toISOString().substring(0, 10);
+    time = now.getTime();
+
+    var instanceparams = {
+        "Filters": [
+                {
+                    Name: 'tag:LambdaBackup',
+                    Values: ['Yes']
+                }
+            ]
+    }
+
+    ec2.describeInstances(instanceparams, function(err, data) {
+
+        //console.log("data: " + JSON.stringify(data,null,4));
+        if (err) console.log(err, err.stack);
+        else {
+            for (var i in data.Reservations) {
+                for (var j in data.Reservations[i].Instances) {
+                    instanceid = data.Reservations[i].Instances[j].InstanceId;
+                    nametag = data.Reservations[i].Instances[j].Tags
+                    for (var k in data.Reservations[i].Instances[j].Tags) {
+                        if (data.Reservations[i].Instances[j].Tags[k].Key == 'Name') {
+                            name = data.Reservations[i].Instances[j].Tags[k].Value;
+                        }
+                    }
+
+                    var imageName = name + "_" + "Backup" + "_" + date + "_" + time;
+
+                    console.info("Creating AMI for the Instance: " + name + " with Name: " + imageName);
+                    var imageparams = {
+                        InstanceId: instanceid,
+                        Name: imageName,
+                        NoReboot: true
+                    }
+
+                    ec2.createImage(imageparams, function(err, data) {
+                        if (err) console.log(err, err.stack);
+                        else {
+                            image = data.ImageId;
+                            console.log(image);
+                            var tagparams = {
+                                Resources: [image],
+                                Tags: [
+                                    {
+                                        Key: 'Backup',
+                                        Value: 'Yes'
+                                    },
+                                    {
+                                        Key: 'CreationDate',
+                                        Value: ""+time
+                                    }
+                                ]
+                            };
+                            ec2.createTags(tagparams, function(err, data) {
+                                if (err) console.log(err, err.stack);
+                                else console.log("Tags added to the created AMIs");
+                            });
+                        }
+                    });
+                }
+            }
+        }
+    });
+
+    // TODO implement
+    callback(null, 'Backup Process Finished.');
+};
